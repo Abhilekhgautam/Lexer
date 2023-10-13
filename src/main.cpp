@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <vector>
 
 /*
@@ -28,9 +29,54 @@ TODO: 1. Maintain a symbol table for reserved keywords
 namespace fs = std::filesystem;
 
 // TODO: to be implemented
-class InputBuffer {
-public:
-};
+namespace Lexer{
+   std::vector<char> buf1(4096);
+   std::vector<char> buf2(4096);
+   char* lexemeBegin;
+   char* forward;
+   const int buffer_size = 4096;
+
+   std::vector<char>& writeBuf(std::vector<char>& buf, std::FILE* f);
+   void readLexeme(std::FILE* f);
+}
+
+std::vector<char>& Lexer::writeBuf(std::vector<char>& buf, std::FILE* f){
+  size_t bytes_read = std::fread(&buf[0], sizeof(buf[0]), buf.size(), f);	
+
+ if(bytes_read < buffer_size){
+   buf[bytes_read] = EOF;	 
+ }
+
+ return buf;
+}
+
+void Lexer::readLexeme(std::FILE* f){
+  // alternatively write to each buffer first and then read 
+ auto buf  = writeBuf(buf1, f); 
+ lexemeBegin = &buf[0];
+ forward = lexemeBegin;
+
+ int count = 0;
+ bool bufOneTurn = false;
+ while(*forward != EOF){
+  count++;
+  forward++;
+  if(count == buffer_size - 1){
+   // switch buffers..
+   count = 0;
+   if(bufOneTurn){
+     bufOneTurn = !bufOneTurn;
+     buf = writeBuf(buf1, f);	   
+     forward = &buf[0];
+   } else {
+      bufOneTurn = !bufOneTurn;
+      buf = writeBuf(buf2, f);
+      forward = &buf[0];
+   }
+  }
+  std::cout << *forward;
+ }
+}
 
 // pass in a filename, outputs lexemes
 int main(int argc, char *argv[]) {
@@ -48,32 +94,10 @@ int main(int argc, char *argv[]) {
     // exit maybe?
     return -1;
   }
-  // create a input file stream
-  std::ifstream input_file(file_path);
   // why cannot the filename be a std::string
   std::FILE *f = std::fopen(file_path, "r");
 
-  // no macros..
-  const int buffer_size = 4096;
-
-  // two buffer should be fine.
-  std::vector<char> buf1(buffer_size);
-  std::vector<char> buf2(buffer_size);
-
-  // alternatively fills in the buffer
-
-  // TODO: maintain pointers to keep track of the lexemes.
-  for (;;) {
-    size_t bytes_read = std::fread(&buf1[0], sizeof(buf1[0]), buf1.size(), f);
-    if (bytes_read < buffer_size) { // what to do for equality??
-      buf1[bytes_read - 1] = EOF;
-      break;
-    } else {
-      size_t bytes_read = std::fread(&buf2[0], sizeof(buf2[0]), buf2.size(), f);
-      if (bytes_read < buffer_size) {
-        buf2[bytes_read - 1] = EOF;
-        break;
-      }
-    }
-  }
+  Lexer::readLexeme(f);
+ 
+  return 0;
 }
