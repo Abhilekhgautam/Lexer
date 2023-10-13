@@ -29,53 +29,57 @@ TODO: 1. Maintain a symbol table for reserved keywords
 namespace fs = std::filesystem;
 
 // TODO: to be implemented
-namespace Lexer{
-   std::vector<char> buf1(4096);
-   std::vector<char> buf2(4096);
-   char* lexemeBegin;
-   char* forward;
-   const int buffer_size = 4096;
+namespace Lexer {
+std::vector<char> buf1(4096);
+std::vector<char> buf2(4096);
+char *lexemeBegin;
+char *forward;
+const int buffer_size = 4096;
 
-   std::vector<char>& writeBuf(std::vector<char>& buf, std::FILE* f);
-   void readLexeme(std::FILE* f);
-}
+std::vector<char> &writeBuf(std::vector<char> &buf, std::FILE *f);
+void readLexeme(std::FILE *f);
+} // namespace Lexer
 
-std::vector<char>& Lexer::writeBuf(std::vector<char>& buf, std::FILE* f){
-  size_t bytes_read = std::fread(&buf[0], sizeof(buf[0]), buf.size(), f);	
+std::vector<char> &Lexer::writeBuf(std::vector<char> &buf, std::FILE *f) {
+  size_t bytes_read = std::fread(&buf[0], sizeof(buf[0]), buf.size(), f);
 
- if(bytes_read < buffer_size){
-   buf[bytes_read] = EOF;	 
- }
-
- return buf;
-}
-
-void Lexer::readLexeme(std::FILE* f){
-  // alternatively write to each buffer first and then read 
- auto buf  = writeBuf(buf1, f); 
- lexemeBegin = &buf[0];
- forward = lexemeBegin;
-
- int count = 0;
- bool bufOneTurn = false;
- while(*forward != EOF){
-  count++;
-  forward++;
-  if(count == buffer_size - 1){
-   // switch buffers..
-   count = 0;
-   if(bufOneTurn){
-     bufOneTurn = !bufOneTurn;
-     buf = writeBuf(buf1, f);	   
-     forward = &buf[0];
-   } else {
-      bufOneTurn = !bufOneTurn;
-      buf = writeBuf(buf2, f);
-      forward = &buf[0];
-   }
+  if (bytes_read < buffer_size) {
+    buf[bytes_read] = EOF;
   }
-  std::cout << *forward;
- }
+
+  return buf;
+}
+
+// RISK: This function has high chances of causing a SegFault.
+// TODO: Test the below function, works exactly how I want thoug..
+void Lexer::readLexeme(std::FILE *f) {
+  // alternatively write to each buffer first and then read
+  auto buf = writeBuf(buf1, f);
+  lexemeBegin = &buf[0];
+  forward = lexemeBegin;
+  // counting no of characters read, helps in determing the time to switch the
+  // buffer.
+  int count = 0;
+  // flag to decide which buffer to write next
+  bool bufOneTurn = false;
+  while (*forward != EOF) {
+
+    count++;
+    forward++;
+    if (count == buffer_size - 1) {
+      // switch buffers..
+      count = 0;
+      if (bufOneTurn) {
+        buf = writeBuf(buf1, f);
+      } else {
+        buf = writeBuf(buf2, f);
+      }
+      bufOneTurn = !bufOneTurn;
+      // switch to next buffer..
+      forward = &buf[0];
+    }
+    std::cout << *forward;
+  }
 }
 
 // pass in a filename, outputs lexemes
@@ -98,6 +102,6 @@ int main(int argc, char *argv[]) {
   std::FILE *f = std::fopen(file_path, "r");
 
   Lexer::readLexeme(f);
- 
+
   return 0;
 }
